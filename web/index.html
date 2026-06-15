@@ -172,18 +172,33 @@ function setMode(mode){
 setMode("offline");
 
 /* ---------- audio (offline system voices) ---------- */
+// Pick the best available Spanish voice rather than the first one: prefer an
+// on-device (clearer than a network fallback), neutral Latin-American voice.
+// We avoid preferring es-ES because Castilian uses /θ/ for z/ce/ci, which would
+// contradict the seseo this demo teaches.
+let _voice = null;
 function pickVoice(){
-  const vs = speechSynthesis.getVoices();
-  return vs.find(v=>v.lang==="es-MX") || vs.find(v=>v.lang && v.lang.indexOf("es")===0) || null;
+  if(_voice) return _voice;
+  const vs = speechSynthesis.getVoices().filter(v => /^es/i.test(v.lang || ""));
+  if(!vs.length) return null;
+  const score = (v) => {
+    let s = 0;
+    if(v.localService) s += 100;                                  // on-device = crisper than network
+    if(/es[-_](mx|419|us|co|ar|cl|pe)/i.test(v.lang)) s += 30;    // neutral Latin-American
+    if(/m[oó]nica|paulina|juan|jorge|diego|google/i.test(v.name)) s += 12; // known-good voices
+    return s;
+  };
+  _voice = vs.slice().sort((a, b) => score(b) - score(a))[0];
+  return _voice;
 }
 function utter(text, rate){
   const u = new SpeechSynthesisUtterance(text);
-  const v = pickVoice(); if(v){ u.voice=v; u.lang=v.lang; } else { u.lang="es-ES"; }
+  const v = pickVoice(); if(v){ u.voice=v; u.lang=v.lang; } else { u.lang="es-MX"; }
   u.rate = rate; return u;
 }
 function speak(text, rate){ speechSynthesis.cancel(); speechSynthesis.speak(utter(text, rate)); }
 function speakSyllables(arr){ speechSynthesis.cancel(); arr.forEach(s=>speechSynthesis.speak(utter(s,0.5))); }
-speechSynthesis.onvoiceschanged = ()=>{};
+speechSynthesis.onvoiceschanged = ()=>{ _voice = null; };   // re-pick once the voice list populates
 
 /* ---------- translation (offline dict or online service) ---------- */
 let transReq = 0;
