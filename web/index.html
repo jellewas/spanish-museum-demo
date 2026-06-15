@@ -26,6 +26,11 @@
   .seg-btn.active{background:var(--accent);color:#1a1205}
   .modecap{margin:8px 0 0;color:var(--muted);font-size:12px;line-height:1.45}
   .modecap b{color:var(--accent2);font-weight:700}
+  .voicebar{display:flex;align-items:center;gap:8px;margin-top:11px}
+  .voicebar .vlbl{color:var(--muted);font-size:12px;white-space:nowrap}
+  .voicebar select{flex:1;min-width:0;background:var(--chip);color:var(--ink);
+    border:1px solid var(--line);border-radius:9px;padding:7px 9px;font-size:12.5px;
+    font-family:inherit;-webkit-appearance:none;appearance:none;cursor:pointer}
   main{flex:1;padding:18px 18px 120px;overflow:auto}
 
   .hint{color:var(--muted);font-size:13px;margin:0 0 14px;display:flex;align-items:center;gap:8px}
@@ -111,6 +116,10 @@
       <button class="seg-btn" data-mode="online">🌐 Online</button>
     </div>
     <p class="modecap" id="modeCap"></p>
+    <div class="voicebar" id="voicebar" style="display:none">
+      <span class="vlbl">🔊 Stem</span>
+      <select id="voiceSel" aria-label="Kies een stem"></select>
+    </div>
   </header>
   <main id="main"></main>
 
@@ -172,33 +181,49 @@ function setMode(mode){
 setMode("offline");
 
 /* ---------- audio (offline system voices) ---------- */
-// Pick the best available Spanish voice rather than the first one: prefer an
-// on-device (clearer than a network fallback), neutral Latin-American voice.
-// We avoid preferring es-ES because Castilian uses /θ/ for z/ce/ci, which would
-// contradict the seseo this demo teaches.
-let _voice = null;
+// Speak the word with the OS's Spanish TTS. The user can override the voice via
+// the picker; otherwise we auto-pick the best one (on-device, neutral LatAm).
+// We avoid es-ES by default: Castilian /θ/ for z/ce/ci contradicts the seseo here.
+let _bestVoice = null, _chosenURI = null;
+const spanishVoices = () => speechSynthesis.getVoices().filter(v => /^es/i.test(v.lang || ""));
+function scoreVoice(v){
+  let s = 0;
+  if(v.localService) s += 100;                                  // on-device = crisper than network
+  if(/es[-_](mx|419|us|co|ar|cl|pe)/i.test(v.lang)) s += 30;    // neutral Latin-American
+  if(/m[oó]nica|paulina|juan|jorge|diego|google/i.test(v.name)) s += 12; // known-good voices
+  return s;
+}
+function bestVoice(){
+  if(_bestVoice) return _bestVoice;
+  const vs = spanishVoices(); if(!vs.length) return null;
+  _bestVoice = vs.slice().sort((a, b) => scoreVoice(b) - scoreVoice(a))[0];
+  return _bestVoice;
+}
 function pickVoice(){
-  if(_voice) return _voice;
-  const vs = speechSynthesis.getVoices().filter(v => /^es/i.test(v.lang || ""));
-  if(!vs.length) return null;
-  const score = (v) => {
-    let s = 0;
-    if(v.localService) s += 100;                                  // on-device = crisper than network
-    if(/es[-_](mx|419|us|co|ar|cl|pe)/i.test(v.lang)) s += 30;    // neutral Latin-American
-    if(/m[oó]nica|paulina|juan|jorge|diego|google/i.test(v.name)) s += 12; // known-good voices
-    return s;
-  };
-  _voice = vs.slice().sort((a, b) => score(b) - score(a))[0];
-  return _voice;
+  const vs = spanishVoices();
+  if(_chosenURI){ const m = vs.find(v => v.voiceURI === _chosenURI); if(m) return m; }
+  return bestVoice();
+}
+// Fill the header dropdown with the available Spanish voices (hidden if none).
+function populateVoices(){
+  const sel = $("voiceSel"), bar = $("voicebar"), vs = spanishVoices();
+  if(!vs.length){ bar.style.display = "none"; return; }
+  bar.style.display = "";
+  const selURI = _chosenURI || (bestVoice() && bestVoice().voiceURI);
+  sel.innerHTML = vs.map(v =>
+    `<option value="${esc(v.voiceURI)}"${v.voiceURI === selURI ? " selected" : ""}>` +
+    `${esc(v.name)} · ${esc(v.lang)}</option>`).join("");
 }
 function utter(text, rate){
   const u = new SpeechSynthesisUtterance(text);
-  const v = pickVoice(); if(v){ u.voice=v; u.lang=v.lang; } else { u.lang="es-MX"; }
+  const v = pickVoice(); if(v){ u.voice = v; u.lang = v.lang; } else { u.lang = "es-MX"; }
   u.rate = rate; return u;
 }
 function speak(text, rate){ speechSynthesis.cancel(); speechSynthesis.speak(utter(text, rate)); }
-function speakSyllables(arr){ speechSynthesis.cancel(); arr.forEach(s=>speechSynthesis.speak(utter(s,0.5))); }
-speechSynthesis.onvoiceschanged = ()=>{ _voice = null; };   // re-pick once the voice list populates
+function speakSyllables(arr){ speechSynthesis.cancel(); arr.forEach(s => speechSynthesis.speak(utter(s, 0.5))); }
+$("voiceSel").onchange = (e) => { _chosenURI = e.target.value; speak("Hola, escucha", 0.9); }; // preview
+speechSynthesis.onvoiceschanged = () => { _bestVoice = null; populateVoices(); };  // list arrives async
+populateVoices();
 
 /* ---------- translation (offline dict or online service) ---------- */
 let transReq = 0;
