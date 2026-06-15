@@ -30,9 +30,9 @@ offline). Or just publish `web/` to GitHub Pages and share the URL.
 
 ## What works offline (no network)
 
-_(This list describes the iOS app. The web demo mirrors the same engine; its OCR
-uses Tesseract.js with the bundled `spa.traineddata` model — the Tesseract runtime
-itself still loads from a CDN, so the browser OCR needs a connection on first run.)_
+_(This list describes the iOS app. The web demo mirrors the same engine, but its
+OCR uses Tesseract.js loaded from a CDN, so the browser OCR needs a connection.
+True on-device offline OCR is the iOS / Apple Vision path.)_
 
 - **OCR** — Apple Vision, on-device, per-word bounding boxes.
 - **Pronunciation** — rule-based Spanish G2P (neutral Latin-American: *seseo*,
@@ -62,8 +62,7 @@ spanish-museum-demo/
 │   ├── index.html            # UI + OCR + tappable text
 │   ├── engine.js             # JS port of the Swift linguistics engine
 │   ├── dict.js               # offline ES→NL glossary
-│   ├── sample.jpg            # bundled demo photo (CC BY-SA 4.0, see samples/CREDITS.md)
-│   └── spa.traineddata       # bundled Tesseract Spanish OCR model
+│   └── sample.jpg            # bundled demo photo (CC BY-SA 4.0, see samples/CREDITS.md)
 └── skills/karpathy-guidelines/      # coding-standards skill
 ```
 

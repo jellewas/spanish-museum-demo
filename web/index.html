@@ -288,19 +288,27 @@ function showWelcome(){
 }
 
 const SAMPLE_CREDIT = "Voorbeeldfoto · Etorreshormazabal / Museopedia Ñuble · CC BY-SA 4.0";
-function loadSample(){ recognizePhoto("sample.jpg", SAMPLE_CREDIT); }
+// Read the sample into a data URL on the main thread first: the OCR worker can't
+// fetch a page-relative URL (it resolves paths against its own CDN location).
+async function loadSample(){
+  try{
+    const blob = await (await fetch("sample.jpg")).blob();
+    const dataURL = await new Promise((ok, err)=>{
+      const r = new FileReader(); r.onload = ()=> ok(r.result); r.onerror = err;
+      r.readAsDataURL(blob);
+    });
+    recognizePhoto(dataURL, SAMPLE_CREDIT);
+  }catch(e){
+    showWelcome();
+    alert("Kon de voorbeeldfoto niet laden: " + e.message);
+  }
+}
 
 // Configured worker: whitelist Spanish characters, treat the photo as one text block.
 let _worker = null;
 async function getWorker(){
   if(_worker) return _worker;
-  // Use the bundled spa.traineddata (served next to this page) so the OCR model
-  // needs no network; fall back to the CDN model if it isn't reachable.
-  try{
-    _worker = await Tesseract.createWorker("spa", 1, { langPath: ".", gzip: false });
-  }catch(e){
-    _worker = await Tesseract.createWorker("spa");
-  }
+  _worker = await Tesseract.createWorker("spa");
   await _worker.setParameters({
     tessedit_pageseg_mode: "6",            // assume a single uniform block of text
     preserve_interword_spaces: "1",
