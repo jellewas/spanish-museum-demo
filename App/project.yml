@@ -1,0 +1,32 @@
+name: SpanishMuseumDemo
+options:
+  bundleIdPrefix: com.lokaalhub
+  deploymentTarget:
+    iOS: "16.0"
+  createIntermediateGroups: true
+
+packages:
+  PronunciationCore:
+    path: ../Core
+
+targets:
+  SpanishMuseumDemo:
+    type: application
+    platform: iOS
+    sources:
+      - Sources
+    dependencies:
+      - package: PronunciationCore
+    settings:
+      base:
+        TARGETED_DEVICE_FAMILY: 1   # iPhone
+        GENERATE_INFOPLIST_FILE: NO
+    info:
+      path: Generated/Info.plist
+      properties:
+        CFBundleDisplayName: Pronto
+        UILaunchScreen: {}
+        UISupportedInterfaceOrientations:
+          - UIInterfaceOrientationPortrait
+        NSCameraUsageDescription: "Maak een foto van Spaanse tekst om de uitspraak te horen."
+        NSPhotoLibraryUsageDescription: "Kies een foto met Spaanse tekst om de uitspraak te horen."
