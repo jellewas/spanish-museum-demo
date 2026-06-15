@@ -1,0 +1,12 @@
+# build artifacts
+.bin/
+.build/
+*.o
+
+# node (used only by web/ocr_test.js, installed transiently)
+web/node_modules/
+web/package-lock.json
+web/package.json
+
+# macOS
+.DS_Store
