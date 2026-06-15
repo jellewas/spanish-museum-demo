@@ -29,7 +29,7 @@
   main{flex:1;padding:18px 18px 120px;overflow:auto}
 
   .hint{color:var(--muted);font-size:13px;margin:0 0 14px;display:flex;align-items:center;gap:8px}
-  .thumb{width:100%;max-height:150px;object-fit:cover;border-radius:14px;border:1px solid var(--line);margin-bottom:16px}
+  .thumb{width:100%;max-height:150px;object-fit:cover;border-radius:14px;border:1px solid var(--line);margin-bottom:16px;cursor:zoom-in}
 
   /* recognized text — natural flowing text, tappable words */
   .doc{font-size:19px;line-height:1.75}
@@ -91,6 +91,14 @@
     padding:15px 22px;font-size:15px;font-weight:700;cursor:pointer;background:var(--accent);color:#1a1205}
   .welcome .sub{margin-top:16px;font-size:13px}
   .credit{font-size:11px;color:#6b7280;margin:10px auto 0;line-height:1.45;max-width:320px}
+
+  /* full-screen photo zoom */
+  .lightbox{position:fixed;inset:0;max-width:430px;margin:0 auto;background:rgba(0,0,0,.93);
+    display:none;align-items:center;justify-content:center;padding:18px;z-index:20;cursor:zoom-out}
+  .lightbox.open{display:flex}
+  .lightbox img{max-width:100%;max-height:100%;object-fit:contain;border-radius:10px}
+  .lightbox .close{position:absolute;top:14px;right:16px;width:38px;height:38px;border:none;
+    border-radius:50%;background:rgba(255,255,255,.12);color:#fff;font-size:20px;cursor:pointer}
 </style>
 </head>
 <body>
@@ -110,6 +118,11 @@
     <button class="btn primary" id="photoBtn">📷 Foto kiezen</button>
     <button class="btn ghost" id="textBtn">✏️ Eigen tekst</button>
     <input type="file" id="file" accept="image/*" capture="environment" hidden />
+  </div>
+
+  <div class="lightbox" id="lightbox">
+    <button class="close" id="lightboxClose" aria-label="Sluiten">✕</button>
+    <img id="lightboxImg" alt="foto vergroot"/>
   </div>
 
   <div class="backdrop" id="backdrop"></div>
@@ -229,6 +242,12 @@ function openWord(raw){
 }
 function closeSheet(){ $("sheet").classList.remove("open"); $("backdrop").classList.remove("open"); }
 $("backdrop").onclick = closeSheet;
+
+/* ---------- photo zoom (lightbox) ---------- */
+function openLightbox(src){ $("lightboxImg").src = src; $("lightbox").classList.add("open"); }
+function closeLightbox(){ $("lightbox").classList.remove("open"); }
+$("lightbox").onclick = closeLightbox;
+$("lightboxClose").onclick = closeLightbox;
 $("pNormal").onclick = ()=> current && speak(current.word, 0.9);
 $("pSlow").onclick   = ()=> current && speak(current.word, 0.5);
 $("pSyl").onclick    = ()=> current && speakSyllables(current.syllables);
@@ -252,12 +271,14 @@ function renderParagraphs(paras, thumb, credit){
     }).join("");
   }
   $("main").innerHTML =
-    (thumb ? `<img class="thumb" src="${thumb}" alt="gescande foto"/>` : "") +
+    (thumb ? `<img class="thumb" src="${thumb}" alt="gescande foto" title="Tik om te vergroten"/>` : "") +
     (credit ? `<p class="credit">${esc(credit)}</p>` : "") +
-    `<p class="hint">Tik op een woord om de uitspraak te horen:</p>
+    `<p class="hint">Tik op een woord om de uitspraak te horen${thumb ? " — of op de foto om te vergroten" : ""}:</p>
      <div class="doc">${body}</div>
      <p class="err" id="err"></p>`;
   [...document.querySelectorAll(".word")].forEach(el=> el.onclick = ()=> openWord(el.textContent));
+  const th = $("main").querySelector(".thumb");
+  if(th) th.onclick = ()=> openLightbox(thumb);
 }
 
 // Plain text -> paragraphs: split on blank lines, reflow wrapped lines within a paragraph.
