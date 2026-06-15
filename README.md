@@ -62,7 +62,7 @@ spanish-museum-demo/
 │   ├── index.html            # UI + OCR + tappable text
 │   ├── engine.js             # JS port of the Swift linguistics engine
 │   ├── dict.js               # offline ES→NL glossary
-│   └── sample.jpg            # bundled demo photo (CC BY-SA 4.0, see samples/CREDITS.md)
+│   └── sample-img.js         # demo photo embedded as base64 (CC BY-SA 4.0, see samples/CREDITS.md)
 └── skills/karpathy-guidelines/      # coding-standards skill
 ```
 

@@ -131,6 +131,7 @@
 
 <script src="engine.js"></script>
 <script src="dict.js"></script>
+<script src="sample-img.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
 <script>
 const SAMPLE =
@@ -288,21 +289,9 @@ function showWelcome(){
 }
 
 const SAMPLE_CREDIT = "Voorbeeldfoto · Etorreshormazabal / Museopedia Ñuble · CC BY-SA 4.0";
-// Read the sample into a data URL on the main thread first: the OCR worker can't
-// fetch a page-relative URL (it resolves paths against its own CDN location).
-async function loadSample(){
-  try{
-    const blob = await (await fetch("sample.jpg")).blob();
-    const dataURL = await new Promise((ok, err)=>{
-      const r = new FileReader(); r.onload = ()=> ok(r.result); r.onerror = err;
-      r.readAsDataURL(blob);
-    });
-    recognizePhoto(dataURL, SAMPLE_CREDIT);
-  }catch(e){
-    showWelcome();
-    alert("Kon de voorbeeldfoto niet laden: " + e.message);
-  }
-}
+// The sample image is embedded as a base64 data URI (sample-img.js), so there is
+// no runtime fetch to fail and the OCR worker gets the bytes directly.
+function loadSample(){ recognizePhoto(SAMPLE_IMG, SAMPLE_CREDIT); }
 
 // Configured worker: whitelist Spanish characters, treat the photo as one text block.
 let _worker = null;
