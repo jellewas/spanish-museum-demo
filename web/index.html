@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+<title>Pronto — Spaanse uitspraak</title>
+<style>
+  :root{
+    --bg:#0f1115; --panel:#171a21; --ink:#f3f0e9; --muted:#9aa0ab;
+    --accent:#e8a13a; --accent2:#f3c06a; --line:#262b35; --chip:#1e222b;
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color:transparent}
+  html,body{margin:0;height:100%;background:#05060a;color:var(--ink);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
+  .phone{max-width:430px;margin:0 auto;min-height:100dvh;background:var(--bg);
+    display:flex;flex-direction:column;position:relative;overflow:hidden}
+  header{padding:18px 20px 14px;border-bottom:1px solid var(--line)}
+  header h1{margin:0;font-size:22px;letter-spacing:.3px}
+  header p{margin:3px 0 0;color:var(--muted);font-size:13px}
+  header .flag{font-size:13px;color:var(--accent2)}
+  main{flex:1;padding:18px 18px 120px;overflow:auto}
+
+  .hint{color:var(--muted);font-size:13px;margin:0 0 14px;display:flex;align-items:center;gap:8px}
+  .thumb{width:100%;max-height:150px;object-fit:cover;border-radius:14px;border:1px solid var(--line);margin-bottom:16px}
+
+  /* recognized text — natural flowing text, tappable words */
+  .doc{font-size:19px;line-height:1.75}
+  .para{margin:0 0 18px}                       /* the blank line between alineas */
+  .para.title{font-size:26px;font-weight:800;text-align:center;letter-spacing:.4px;margin:4px 0 22px}
+  .para.foot{font-size:12.5px;color:var(--muted);text-align:center;letter-spacing:.4px;margin-top:20px;line-height:1.5}
+  .word{cursor:pointer;border-radius:4px;padding:0 1px;transition:background .12s,color .12s}
+  .word:hover{color:var(--accent2)}
+  .word:active{background:rgba(232,161,58,.25);color:var(--accent2)}
+
+  .spinner{width:15px;height:15px;border:2px solid var(--line);border-top-color:var(--accent);
+    border-radius:50%;animation:spin .8s linear infinite;display:inline-block}
+  @keyframes spin{to{transform:rotate(360deg)}}
+
+  .toolbar{position:fixed;bottom:0;left:0;right:0;max-width:430px;margin:0 auto;
+    display:flex;gap:10px;padding:14px 16px calc(14px + env(safe-area-inset-bottom));
+    background:linear-gradient(0deg,var(--bg) 70%,transparent);border-top:1px solid var(--line)}
+  .btn{flex:1;border:none;border-radius:14px;padding:14px;font-size:15px;font-weight:600;cursor:pointer}
+  .btn.primary{background:var(--accent);color:#1a1205}
+  .btn.ghost{background:var(--panel);color:var(--ink);border:1px solid var(--line)}
+
+  /* bottom sheet */
+  .backdrop{position:fixed;inset:0;max-width:430px;margin:0 auto;background:rgba(0,0,0,.5);
+    opacity:0;pointer-events:none;transition:.2s}
+  .backdrop.open{opacity:1;pointer-events:auto}
+  .sheet{position:fixed;left:0;right:0;bottom:0;max-width:430px;margin:0 auto;
+    background:var(--panel);border-radius:22px 22px 0 0;border-top:1px solid var(--line);
+    padding:10px 22px calc(26px + env(safe-area-inset-bottom));transform:translateY(110%);
+    transition:transform .26s cubic-bezier(.2,.8,.2,1);z-index:10}
+  .sheet.open{transform:translateY(0)}
+  .grip{width:42px;height:5px;background:#39414f;border-radius:3px;margin:6px auto 14px}
+  .word-big{font-size:40px;font-weight:800;letter-spacing:.5px}
+  .ipa{font-size:20px;color:var(--muted);margin-top:2px}
+  .sylls{display:flex;gap:7px;margin:16px 0}
+  .syl{padding:8px 13px;border-radius:10px;background:var(--chip);font-size:19px}
+  .syl.stress{background:rgba(232,161,58,.22);color:var(--accent2);font-weight:800}
+  .plays{display:flex;gap:9px;margin-bottom:18px}
+  .play{flex:1;border:none;border-radius:12px;padding:12px 6px;font-size:13px;font-weight:600;cursor:pointer;
+    background:var(--accent);color:#1a1205;display:flex;flex-direction:column;gap:4px;align-items:center}
+  .play.sec{background:var(--chip);color:var(--ink);border:1px solid var(--line)}
+  .play .ic{font-size:18px}
+  .tips{display:flex;flex-direction:column;gap:11px}
+  .tip{display:flex;gap:10px;font-size:14px;line-height:1.4;color:#e7e3da}
+  .tip .ic{color:var(--accent2)}
+  .err{color:#f08a8a;font-size:13px;margin-top:12px}
+</style>
+</head>
+<body>
+<div class="phone">
+  <header>
+    <h1>Pronto <span class="flag">· ES → NL</span></h1>
+    <p>Fotografeer Spaanse tekst. De tekst verschijnt op het scherm — tik op een woord om de uitspraak te horen.</p>
+  </header>
+  <main id="main"></main>
+
+  <div class="toolbar">
+    <button class="btn primary" id="photoBtn">📷 Foto kiezen</button>
+    <button class="btn ghost" id="textBtn">✏️ Eigen tekst</button>
+    <input type="file" id="file" accept="image/*" capture="environment" hidden />
+  </div>
+
+  <div class="backdrop" id="backdrop"></div>
+  <div class="sheet" id="sheet" role="dialog" aria-modal="true">
+    <div class="grip"></div>
+    <div class="word-big" id="sWord"></div>
+    <div class="ipa" id="sIpa"></div>
+    <div class="sylls" id="sSylls"></div>
+    <div class="plays">
+      <button class="play" id="pNormal"><span class="ic">🔊</span>Luister</button>
+      <button class="play sec" id="pSlow"><span class="ic">🐢</span>Langzaam</button>
+      <button class="play sec" id="pSyl"><span class="ic">🔡</span>Lettergrepen</button>
+    </div>
+    <div class="tips" id="sTips"></div>
+  </div>
+</div>
+
+<script src="engine.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+<script>
+const SAMPLE =
+  "VELORIO DE UN ANGELITO\n\n" +
+  "El Velorio del Angelito es una de las tradiciones populares más arraigadas en el campo chileno. " +
+  "Esta costumbre, ya casi extinta, se dedicaba a los niños que fallecían. " +
+  "Los cantores le dedicaban sus décimas durante toda la noche.\n\n" +
+  "Este ritual funerario apela a la antigua cultura campesina. " +
+  "Está dedicado a los niños que fallecen antes de cumplir los tres años.";
+const $ = (id) => document.getElementById(id);
+const esc = (s) => s.replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+
+/* ---------- audio (offline system voices) ---------- */
+function pickVoice(){
+  const vs = speechSynthesis.getVoices();
+  return vs.find(v=>v.lang==="es-MX") || vs.find(v=>v.lang && v.lang.indexOf("es")===0) || null;
+}
+function utter(text, rate){
+  const u = new SpeechSynthesisUtterance(text);
+  const v = pickVoice(); if(v){ u.voice=v; u.lang=v.lang; } else { u.lang="es-ES"; }
+  u.rate = rate; return u;
+}
+function speak(text, rate){ speechSynthesis.cancel(); speechSynthesis.speak(utter(text, rate)); }
+function speakSyllables(arr){ speechSynthesis.cancel(); arr.forEach(s=>speechSynthesis.speak(utter(s,0.5))); }
+speechSynthesis.onvoiceschanged = ()=>{};
+
+/* ---------- bottom sheet ---------- */
+let current = null;
+function openWord(raw){
+  const word = (raw||"").replace(/[^A-Za-zÁÉÍÓÚáéíóúÑñÜü]/g,"");
+  if(!word) return;
+  current = Pronouncer.pronounce(word);
+  $("sWord").textContent = current.word;
+  $("sIpa").textContent = "/"+current.ipa+"/";
+  $("sSylls").innerHTML = current.syllables.map((s,i)=>
+    `<span class="syl ${i===current.stressIndex?"stress":""}">${esc(s)}</span>`).join("");
+  $("sTips").innerHTML = current.tips.map(t=>
+    `<div class="tip"><span class="ic">💡</span><span>${esc(t)}</span></div>`).join("");
+  $("sheet").classList.add("open"); $("backdrop").classList.add("open");
+  speak(current.word, 0.9);
+}
+function closeSheet(){ $("sheet").classList.remove("open"); $("backdrop").classList.remove("open"); }
+$("backdrop").onclick = closeSheet;
+$("pNormal").onclick = ()=> current && speak(current.word, 0.9);
+$("pSlow").onclick   = ()=> current && speak(current.word, 0.5);
+$("pSyl").onclick    = ()=> current && speakSyllables(current.syllables);
+
+/* ---------- render recognized text as natural, tappable paragraphs ---------- */
+const wordCount = (text) => text.split(/\s+/).filter(Boolean).length;
+const isAllCaps = (text) => /[A-ZÁÉÍÓÚÑÜ]/.test(text) && !/[a-záéíóúñü]/.test(text);
+const wordsToSpans = (text) =>
+  text.split(/\s+/).filter(Boolean).map(w=>`<span class="word">${esc(w)}</span>`).join(" ");
+
+function renderParagraphs(paras, thumb){
+  let body;
+  if(!paras.length){
+    body = "<p class='para'><em style='color:#9aa0ab'>Geen tekst gevonden.</em></p>";
+  } else {
+    body = paras.map((p,i)=>{
+      let cls = "para";
+      if(i===0 && wordCount(p) <= 6) cls = "para title";   // short first block = heading
+      else if(isAllCaps(p)) cls = "para foot";             // all-caps block = footer/credit
+      return `<p class="${cls}">${wordsToSpans(p)}</p>`;
+    }).join("");
+  }
+  $("main").innerHTML =
+    (thumb ? `<img class="thumb" src="${thumb}" alt="gescande foto"/>` : "") +
+    `<p class="hint">Tik op een woord om de uitspraak te horen:</p>
+     <div class="doc">${body}</div>
+     <p class="err" id="err"></p>`;
+  [...document.querySelectorAll(".word")].forEach(el=> el.onclick = ()=> openWord(el.textContent));
+}
+
+// Plain text -> paragraphs: split on blank lines, reflow wrapped lines within a paragraph.
+function toParagraphs(text){
+  return text.split(/\n\s*\n/).map(p=>p.replace(/\s*\n\s*/g," ").trim()).filter(s=>letterCount(s)>=2);
+}
+function showText(text, thumb){ renderParagraphs(toParagraphs(text), thumb); }
+
+function showLoading(thumb){
+  $("main").innerHTML =
+    `<img class="thumb" src="${thumb}" alt="foto"/>
+     <p class="hint"><span class="spinner"></span> Tekst herkennen…</p>`;
+}
+
+// Configured worker: whitelist Spanish characters, treat the photo as one text block.
+let _worker = null;
+async function getWorker(){
+  if(_worker) return _worker;
+  _worker = await Tesseract.createWorker("spa");
+  await _worker.setParameters({
+    tessedit_pageseg_mode: "6",            // assume a single uniform block of text
+    preserve_interword_spaces: "1",
+    tessedit_char_whitelist:
+      "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyzÁÉÍÓÚáéíóúÑñÜü.,;:()¡!¿?-\"' "
+  });
+  return _worker;
+}
+
+// A real Spanish word: the valid one-letter words (y, o, a, e, u), or
+// at least 2 letters, mostly letters, containing a vowel.
+const ONE_LETTER_WORDS = new Set(["y", "o", "a", "e", "u"]);
+function plausible(text){
+  const clean = text.replace(/[^A-Za-zÁÉÍÓÚáéíóúÑñÜü]/g, "");
+  if(clean.length === 1) return ONE_LETTER_WORDS.has(clean.toLowerCase());
+  return clean.length >= 2 && clean.length / text.length >= 0.6 && /[aeiouáéíóúü]/i.test(text);
+}
+function keepWord(w){
+  if(!w || typeof w.text !== "string") return false;
+  const conf = w.confidence || 0;
+  const clean = w.text.replace(/[^A-Za-zÁÉÍÓÚáéíóúÑñÜü]/g, "");
+  if(clean.length === 1) return ONE_LETTER_WORDS.has(clean.toLowerCase()) && conf >= 85;
+  return conf >= 60 && plausible(w.text);
+}
+const letterCount = (s) => (s.match(/[A-Za-zÁÉÍÓÚáéíóúÑñÜü]/g) || []).length;
+// Kept words joined per OCR line, with the line's vertical position (drops stray-char lines).
+function collectLines(data){
+  const out = [];
+  for(const b of (data.blocks || []))
+    for(const p of (b.paragraphs || []))
+      for(const l of (p.lines || [])){
+        const text = (l.words || []).filter(keepWord).map(w => w.text).join(" ").trim();
+        if(letterCount(text) >= 2) out.push({ text, y0: l.bbox.y0, y1: l.bbox.y1 });
+      }
+  return out;
+}
+// Group lines into paragraphs by vertical gaps (a large gap = new alinea/title/footer).
+function collectParagraphs(data){
+  const lines = collectLines(data);
+  if(!lines.length) return [];
+  const heights = lines.map(l => l.y1 - l.y0).sort((a,b)=>a-b);
+  const medH = heights[Math.floor(heights.length/2)] || 1;
+  const paras = []; let cur = [lines[0]];
+  for(let i=1;i<lines.length;i++){
+    const gap = lines[i].y0 - lines[i-1].y1;
+    if(gap > medH * 0.8){ paras.push(cur.map(l=>l.text).join(" ")); cur = [lines[i]]; }
+    else cur.push(lines[i]);
+  }
+  paras.push(cur.map(l=>l.text).join(" "));
+  return paras;
+}
+
+async function recognizePhoto(dataURL){
+  showLoading(dataURL);
+  if(typeof Tesseract==="undefined"){
+    showText("", dataURL);
+    $("err").textContent = "OCR kon niet laden (geen internet?). Gebruik ✏️ Eigen tekst.";
+    return;
+  }
+  try{
+    const worker = await getWorker();
+    const { data } = await worker.recognize(dataURL, {}, { blocks: true, text: true });
+    let paras = collectParagraphs(data);
+    // Fallback if structured output is unavailable.
+    if(!paras.length && data.text){
+      paras = toParagraphs(data.text)
+        .map(p => p.split(/\s+/).filter(plausible).join(" "))
+        .filter(s => letterCount(s) >= 2);
+    }
+    renderParagraphs(paras, dataURL);
+    if(!paras.length) $("err").textContent = "Geen duidelijke tekst herkend.";
+  }catch(e){
+    showText("", dataURL);
+    $("err").textContent = "OCR-fout: "+e.message;
+  }
+}
+
+/* ---------- controls ---------- */
+$("photoBtn").onclick = ()=> $("file").click();
+$("file").onchange = (e)=>{
+  const f = e.target.files && e.target.files[0]; if(!f) return;
+  const r = new FileReader(); r.onload = ()=> recognizePhoto(r.result); r.readAsDataURL(f);
+};
+$("textBtn").onclick = ()=>{
+  const t = prompt("Plak of typ Spaanse tekst:", SAMPLE.replace(/\n/g," "));
+  if(t && t.trim()) showText(t.trim());
+};
+
+showText(SAMPLE);
+</script>
+</body>
+</html>
