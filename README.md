@@ -5,10 +5,33 @@ menu, a sign), tap a word, and hear it pronounced correctly — with IPA,
 syllable breakdown, and pronunciation tips in Dutch for the learner.
 
 > Concept demo for a language-learning app whose edge is "you only speak to an
-> AI that corrects you." This is the **travel / offline** feature: it works with
-> no signal.
+> AI that corrects you." **This demo is the adjacent travel / offline feature —
+> snap-and-hear pronunciation — not the core record-yourself correction loop.**
+> The point it proves: the hard linguistics (correct Spanish IPA, syllabification,
+> stress, and Dutch-specific coaching) run fully on-device, no model, no signal.
+
+## Try it in 30 seconds (web)
+
+The `web/` folder is a self-contained browser version — the quickest way to see
+it. It must be **served over http** (the OCR worker won't load from `file://`):
+
+```sh
+cd web
+python3 -m http.server 8000
+# open http://localhost:8000
+```
+
+A sample museum placard ("Velorio de un Angelito") is pre-loaded — tap any word
+to hear it, see IPA + syllables, and get Dutch pronunciation tips. Use
+**📷 Foto kiezen** to OCR your own photo, or **✏️ Eigen tekst** to paste text.
+Toggle **Offline / Online** to switch the translation source (audio is always
+offline). Or just publish `web/` to GitHub Pages and share the URL.
 
 ## What works offline (no network)
+
+_(This list describes the iOS app. The web demo mirrors the same engine; its OCR
+uses Tesseract.js with the bundled `spa.traineddata` model — the Tesseract runtime
+itself still loads from a CDN, so the browser OCR needs a connection on first run.)_
 
 - **OCR** — Apple Vision, on-device, per-word bounding boxes.
 - **Pronunciation** — rule-based Spanish G2P (neutral Latin-American: *seseo*,
@@ -34,6 +57,11 @@ spanish-museum-demo/
 ├── App/                      # SwiftUI iOS app
 │   ├── Sources/
 │   └── project.yml           # XcodeGen manifest
+├── web/                      # self-contained browser demo (see "Try it" above)
+│   ├── index.html            # UI + OCR + tappable text
+│   ├── engine.js             # JS port of the Swift linguistics engine
+│   ├── dict.js               # offline ES→NL glossary
+│   └── spa.traineddata       # bundled Tesseract Spanish OCR model
 └── skills/karpathy-guidelines/      # coding-standards skill
 ```
 

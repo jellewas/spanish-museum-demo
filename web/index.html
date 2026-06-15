@@ -18,6 +18,14 @@
   header h1{margin:0;font-size:22px;letter-spacing:.3px}
   header p{margin:3px 0 0;color:var(--muted);font-size:13px}
   header .flag{font-size:13px;color:var(--accent2)}
+
+  .seg{display:inline-flex;background:var(--chip);border:1px solid var(--line);
+    border-radius:10px;padding:3px;margin-top:12px}
+  .seg-btn{border:none;background:transparent;color:var(--muted);font-size:13px;
+    font-weight:600;padding:6px 16px;border-radius:8px;cursor:pointer;transition:.15s}
+  .seg-btn.active{background:var(--accent);color:#1a1205}
+  .modecap{margin:8px 0 0;color:var(--muted);font-size:12px;line-height:1.45}
+  .modecap b{color:var(--accent2);font-weight:700}
   main{flex:1;padding:18px 18px 120px;overflow:auto}
 
   .hint{color:var(--muted);font-size:13px;margin:0 0 14px;display:flex;align-items:center;gap:8px}
@@ -55,6 +63,12 @@
   .grip{width:42px;height:5px;background:#39414f;border-radius:3px;margin:6px auto 14px}
   .word-big{font-size:40px;font-weight:800;letter-spacing:.5px}
   .ipa{font-size:20px;color:var(--muted);margin-top:2px}
+  .trans{font-size:17px;margin-top:10px;color:var(--ink)}
+  .trans .lbl{color:var(--muted);font-size:13px;margin-right:6px}
+  .trans .nl{color:var(--accent2);font-weight:700}
+  .trans.none .nl,.trans.loading .nl{color:var(--muted);font-weight:400;font-style:italic}
+  .trans-cap{font-size:12px;color:var(--muted);margin-top:5px;line-height:1.4}
+  .trans-cap .src{color:var(--accent2);font-weight:600;font-style:normal}
   .sylls{display:flex;gap:7px;margin:16px 0}
   .syl{padding:8px 13px;border-radius:10px;background:var(--chip);font-size:19px}
   .syl.stress{background:rgba(232,161,58,.22);color:var(--accent2);font-weight:800}
@@ -74,6 +88,11 @@
   <header>
     <h1>Pronto <span class="flag">· ES → NL</span></h1>
     <p>Fotografeer Spaanse tekst. De tekst verschijnt op het scherm — tik op een woord om de uitspraak te horen.</p>
+    <div class="seg" id="modeToggle">
+      <button class="seg-btn active" data-mode="offline">📴 Offline</button>
+      <button class="seg-btn" data-mode="online">🌐 Online</button>
+    </div>
+    <p class="modecap" id="modeCap"></p>
   </header>
   <main id="main"></main>
 
@@ -88,6 +107,8 @@
     <div class="grip"></div>
     <div class="word-big" id="sWord"></div>
     <div class="ipa" id="sIpa"></div>
+    <div class="trans" id="sTrans"></div>
+    <div class="trans-cap" id="sTransCap"></div>
     <div class="sylls" id="sSylls"></div>
     <div class="plays">
       <button class="play" id="pNormal"><span class="ic">🔊</span>Luister</button>
@@ -99,6 +120,7 @@
 </div>
 
 <script src="engine.js"></script>
+<script src="dict.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
 <script>
 const SAMPLE =
@@ -110,6 +132,20 @@ const SAMPLE =
   "Está dedicado a los niños que fallecen antes de cumplir los tres años.";
 const $ = (id) => document.getElementById(id);
 const esc = (s) => s.replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+
+/* ---------- offline / online mode (only affects translation; audio is always offline) ---------- */
+let onlineMode = false;
+const MODE_CAP = {
+  offline: "<b>Alles offline.</b> Uitspraak is volledig offline. Vertaling komt uit een klein ingebouwd woordenboek — beperkte woordenschat, losse woorden zonder context.",
+  online:  "<b>Online aan.</b> Vertaling via een externe dienst (volledige dekking, vereist internet). Uitspraak blijft altijd offline.",
+};
+function setMode(mode){
+  onlineMode = (mode === "online");
+  [...$("modeToggle").children].forEach(b => b.classList.toggle("active", b.dataset.mode === mode));
+  $("modeCap").innerHTML = MODE_CAP[mode];
+}
+[...$("modeToggle").children].forEach(b => b.onclick = ()=> setMode(b.dataset.mode));
+setMode("offline");
 
 /* ---------- audio (offline system voices) ---------- */
 function pickVoice(){
@@ -125,6 +161,45 @@ function speak(text, rate){ speechSynthesis.cancel(); speechSynthesis.speak(utte
 function speakSyllables(arr){ speechSynthesis.cancel(); arr.forEach(s=>speechSynthesis.speak(utter(s,0.5))); }
 speechSynthesis.onvoiceschanged = ()=>{};
 
+/* ---------- translation (offline dict or online service) ---------- */
+let transReq = 0;
+function setTrans(nl, cls, capHTML){
+  $("sTrans").className = "trans " + cls;
+  $("sTrans").innerHTML = `<span class="lbl">Vertaling</span>` +
+    `<span class="nl">${esc(nl || "geen vertaling beschikbaar")}</span>`;
+  $("sTransCap").innerHTML = capHTML;
+}
+async function fetchOnline(word){
+  const url = "https://api.mymemory.translated.net/get?q=" +
+    encodeURIComponent(word) + "&langpair=es|nl";
+  const res = await fetch(url);
+  if(!res.ok) throw new Error("http " + res.status);
+  const j = await res.json();
+  const t = j && j.responseData && j.responseData.translatedText;
+  if(!t) throw new Error("leeg antwoord");
+  return t;
+}
+async function renderTranslation(word){
+  const req = ++transReq;                       // guard: ignore if a newer word was tapped
+  if(!onlineMode){
+    const off = Dict.lookup(word);
+    setTrans(off, off ? "" : "none",
+      `<span class="src">📴 Woordenboek aan boord</span> · beperkte woordenschat, losse woorden.`);
+    return;
+  }
+  setTrans("vertalen…", "loading", `<span class="src">🌐 Online dienst</span> · ophalen…`);
+  try{
+    const nl = await fetchOnline(word);
+    if(req !== transReq) return;
+    setTrans(nl, "", `<span class="src">🌐 Online dienst (MyMemory)</span> · ES→NL, volledige vertaling.`);
+  }catch(e){
+    if(req !== transReq) return;
+    const off = Dict.lookup(word);
+    setTrans(off, off ? "" : "none",
+      `<span class="src">⚠️ Online niet bereikbaar</span> — teruggevallen op het woordenboek aan boord.`);
+  }
+}
+
 /* ---------- bottom sheet ---------- */
 let current = null;
 function openWord(raw){
@@ -133,6 +208,7 @@ function openWord(raw){
   current = Pronouncer.pronounce(word);
   $("sWord").textContent = current.word;
   $("sIpa").textContent = "/"+current.ipa+"/";
+  renderTranslation(word);
   $("sSylls").innerHTML = current.syllables.map((s,i)=>
     `<span class="syl ${i===current.stressIndex?"stress":""}">${esc(s)}</span>`).join("");
   $("sTips").innerHTML = current.tips.map(t=>
@@ -188,7 +264,13 @@ function showLoading(thumb){
 let _worker = null;
 async function getWorker(){
   if(_worker) return _worker;
-  _worker = await Tesseract.createWorker("spa");
+  // Use the bundled spa.traineddata (served next to this page) so the OCR model
+  // needs no network; fall back to the CDN model if it isn't reachable.
+  try{
+    _worker = await Tesseract.createWorker("spa", 1, { langPath: ".", gzip: false });
+  }catch(e){
+    _worker = await Tesseract.createWorker("spa");
+  }
   await _worker.setParameters({
     tessedit_pageseg_mode: "6",            // assume a single uniform block of text
     preserve_interword_spaces: "1",
