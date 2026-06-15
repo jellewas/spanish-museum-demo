@@ -21,8 +21,9 @@ python3 -m http.server 8000
 # open http://localhost:8000
 ```
 
-A sample museum placard ("Velorio de un Angelito") is pre-loaded — tap any word
-to hear it, see IPA + syllables, and get Dutch pronunciation tips. Use
+It opens on an empty start screen. Tap **🖼️ Probeer een voorbeeldfoto** to run
+OCR on the bundled museum panel ("Velorio de un Angelito"), then tap any word to
+hear it, see IPA + syllables, and get Dutch pronunciation tips. Or use
 **📷 Foto kiezen** to OCR your own photo, or **✏️ Eigen tekst** to paste text.
 Toggle **Offline / Online** to switch the translation source (audio is always
 offline). Or just publish `web/` to GitHub Pages and share the URL.
@@ -61,6 +62,7 @@ spanish-museum-demo/
 │   ├── index.html            # UI + OCR + tappable text
 │   ├── engine.js             # JS port of the Swift linguistics engine
 │   ├── dict.js               # offline ES→NL glossary
+│   ├── sample.jpg            # bundled demo photo (CC BY-SA 4.0, see samples/CREDITS.md)
 │   └── spa.traineddata       # bundled Tesseract Spanish OCR model
 └── skills/karpathy-guidelines/      # coding-standards skill
 ```

@@ -81,6 +81,16 @@
   .tip{display:flex;gap:10px;font-size:14px;line-height:1.4;color:#e7e3da}
   .tip .ic{color:var(--accent2)}
   .err{color:#f08a8a;font-size:13px;margin-top:12px}
+
+  /* empty / welcome state */
+  .welcome{padding:30px 8px 8px;text-align:center}
+  .welcome .ic{font-size:44px;line-height:1}
+  .welcome h2{margin:14px 0 7px;font-size:20px}
+  .welcome p{margin:0 auto 22px;color:var(--muted);font-size:14px;line-height:1.5;max-width:300px}
+  .big-btn{display:inline-flex;align-items:center;gap:9px;border:none;border-radius:14px;
+    padding:15px 22px;font-size:15px;font-weight:700;cursor:pointer;background:var(--accent);color:#1a1205}
+  .welcome .sub{margin-top:16px;font-size:13px}
+  .credit{font-size:11px;color:#6b7280;margin:10px auto 0;line-height:1.45;max-width:320px}
 </style>
 </head>
 <body>
@@ -228,7 +238,7 @@ const isAllCaps = (text) => /[A-ZÁÉÍÓÚÑÜ]/.test(text) && !/[a-záéíóú
 const wordsToSpans = (text) =>
   text.split(/\s+/).filter(Boolean).map(w=>`<span class="word">${esc(w)}</span>`).join(" ");
 
-function renderParagraphs(paras, thumb){
+function renderParagraphs(paras, thumb, credit){
   let body;
   if(!paras.length){
     body = "<p class='para'><em style='color:#9aa0ab'>Geen tekst gevonden.</em></p>";
@@ -242,6 +252,7 @@ function renderParagraphs(paras, thumb){
   }
   $("main").innerHTML =
     (thumb ? `<img class="thumb" src="${thumb}" alt="gescande foto"/>` : "") +
+    (credit ? `<p class="credit">${esc(credit)}</p>` : "") +
     `<p class="hint">Tik op een woord om de uitspraak te horen:</p>
      <div class="doc">${body}</div>
      <p class="err" id="err"></p>`;
@@ -252,13 +263,32 @@ function renderParagraphs(paras, thumb){
 function toParagraphs(text){
   return text.split(/\n\s*\n/).map(p=>p.replace(/\s*\n\s*/g," ").trim()).filter(s=>letterCount(s)>=2);
 }
-function showText(text, thumb){ renderParagraphs(toParagraphs(text), thumb); }
+function showText(text, thumb, credit){ renderParagraphs(toParagraphs(text), thumb, credit); }
 
-function showLoading(thumb){
+function showLoading(thumb, credit){
   $("main").innerHTML =
-    `<img class="thumb" src="${thumb}" alt="foto"/>
-     <p class="hint"><span class="spinner"></span> Tekst herkennen…</p>`;
+    `<img class="thumb" src="${thumb}" alt="foto"/>` +
+    (credit ? `<p class="credit">${esc(credit)}</p>` : "") +
+    `<p class="hint"><span class="spinner"></span> Tekst herkennen…</p>`;
 }
+
+// Empty start screen — invites the reviewer to OCR the bundled sample,
+// pick their own photo, or paste text. No text is pre-loaded.
+function showWelcome(){
+  $("main").innerHTML =
+    `<div class="welcome">
+       <div class="ic">📷</div>
+       <h2>Spaanse uitspraak, in je broekzak</h2>
+       <p>Richt je camera op Spaanse tekst — een museumbordje, een menu, een straatnaam — tik op een woord en hoor hoe je het uitspreekt.</p>
+       <button class="big-btn" id="sampleBtn">🖼️ Probeer een voorbeeldfoto</button>
+       <p class="sub" style="color:var(--muted)">…of kies hieronder je eigen foto, of plak tekst.</p>
+       <p class="credit">Voorbeeldfoto: cédula “Velorio de un Angelito”, Casa Museo Violeta Parra, San Carlos (CL) · © Etorreshormazabal / Museopedia Ñuble · CC BY-SA 4.0</p>
+     </div>`;
+  $("sampleBtn").onclick = loadSample;
+}
+
+const SAMPLE_CREDIT = "Voorbeeldfoto · Etorreshormazabal / Museopedia Ñuble · CC BY-SA 4.0";
+function loadSample(){ recognizePhoto("sample.jpg", SAMPLE_CREDIT); }
 
 // Configured worker: whitelist Spanish characters, treat the photo as one text block.
 let _worker = null;
@@ -323,10 +353,10 @@ function collectParagraphs(data){
   return paras;
 }
 
-async function recognizePhoto(dataURL){
-  showLoading(dataURL);
+async function recognizePhoto(dataURL, credit){
+  showLoading(dataURL, credit);
   if(typeof Tesseract==="undefined"){
-    showText("", dataURL);
+    showText("", dataURL, credit);
     $("err").textContent = "OCR kon niet laden (geen internet?). Gebruik ✏️ Eigen tekst.";
     return;
   }
@@ -340,10 +370,10 @@ async function recognizePhoto(dataURL){
         .map(p => p.split(/\s+/).filter(plausible).join(" "))
         .filter(s => letterCount(s) >= 2);
     }
-    renderParagraphs(paras, dataURL);
+    renderParagraphs(paras, dataURL, credit);
     if(!paras.length) $("err").textContent = "Geen duidelijke tekst herkend.";
   }catch(e){
-    showText("", dataURL);
+    showText("", dataURL, credit);
     $("err").textContent = "OCR-fout: "+e.message;
   }
 }
@@ -359,7 +389,7 @@ $("textBtn").onclick = ()=>{
   if(t && t.trim()) showText(t.trim());
 };
 
-showText(SAMPLE);
+showWelcome();
 </script>
 </body>
 </html>
